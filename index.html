@@ -1,125 +1,204 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Music List</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Menu Musik</title>
   <style>
     body {
-      margin: 0;
       font-family: sans-serif;
-      background-color: #000;
-      color: white;
+      margin: 0;
+      background: white;
+      color: black;
+      overflow: hidden;
+    }
+
+    .video-container {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      background: white;
+    }
+
+    .bgVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-    }
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin: 20px;
       justify-content: center;
+      min-height: 100vh;
+      gap: 20px;
     }
-    button {
-      padding: 10px 15px;
-      font-size: 16px;
+
+    h1 {
+      margin: 0;
+    }
+
+    .menu {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(10px);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .menu-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 6px;
+      padding: 8px 12px;
+    }
+
+    .menu-row button {
+      padding: 6px 14px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
       cursor: pointer;
     }
-    video {
-      max-width: 100%;
-      height: auto;
-      display: block;
+
+    audio {
+      width: 300px;
     }
-    #video-container {
-      position: relative;
-      width: 100%;
-      max-width: 800px;
+
+    .clarification {
+      font-size: 12px;
+      color: gray;
+    }
+
+    .ldm-toggle {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-
-  <h1>Music List</h1>
-
-  <div class="controls">
-    <button onclick="playSong('funk_universo.mp3', 'fu.mp4', 2)">Funk Universo</button>
-    <button onclick="playSong('bike.mp3', 'bike.mp4', 1.5)">Bike</button>
-    <button onclick="playSong('stay_rx.mp3', 'stay.mp4', 3)">Stay RX</button>
-    <button onclick="playSong('girla.mp3', 'girla.mp4', 2.5)">Girl A</button>
-    <button onclick="toggleLDM()">Toggle LDM</button>
+  <div class="video-container">
+    <video id="video" class="bgVideo" muted playsinline preload="auto"></video>
   </div>
 
-  <div id="video-container">
-    <video id="bgVideo" muted></video>
+  <div class="content">
+    <h1>Menu Musik</h1>
+
+    <div class="menu" id="menu">
+      <div class="menu-row">
+        Irokz - Funk Universo
+        <button onclick="playMusic('music/funk_universo.mp3')">Play</button>
+      </div>
+      <div class="menu-row">
+        Tanger - BIKE
+        <button onclick="playMusic('music/bike.mp3')">Play</button>
+      </div>
+      <div class="menu-row">
+        Justin Bieber - STAY
+        <button onclick="playMusic('music/stay_rx.mp3')">Play</button>
+      </div>
+      <div class="menu-row">
+        Sinnamota - Girl A
+        <button onclick="playMusic('music/girla.mp3')">Play</button>
+      </div>
+    </div>
+
+    <audio id="player" controls></audio>
+    <div class="clarification" id="clarification">Video sinkron dengan audio (offset).</div>
+
+    <div class="ldm-toggle">
+      <input type="checkbox" id="ldmToggle" />
+      <label for="ldmToggle">LDM (Low Detail Mode)</label>
+    </div>
   </div>
-  
-  <audio id="audio" controls style="width: 90%; max-width: 800px; margin-top: 10px;"></audio>
 
   <script>
-    const audio = document.getElementById("audio");
-    const video = document.getElementById("bgVideo");
+    const player = document.getElementById('player');
+    const video = document.getElementById('video');
+    const clarification = document.getElementById('clarification');
+    const ldmToggle = document.getElementById('ldmToggle');
 
-    let currentVideo = "";
-    let currentOffset = 0;
-    let isLDM = false;
+    const videoSettings = {
+      'music/funk_universo.mp3': { trigger: 72.5, base: 'fu.mp4', folder: 'background/' },
+      'music/bike.mp3': { trigger: 0, base: 'bike.mp4', folder: 'background/' },
+      'music/stay_rx.mp3': { trigger: 25.4, base: 'stay.mp4', folder: 'background/' },
+      'music/girla.mp3': { trigger: 0, base: 'girla.mp4', folder: 'background2/' }
+    };
 
-    const baseCDN = "https://cdn.jsdelivr.net/gh/HazyFireAja/background/";
-    const baseLDM = "https://cdn.jsdelivr.net/gh/HazyFireAja/background2/";
+    let currentTrack = null;
+    let videoShown = false;
 
-    function playSong(audioFile, videoFile, offset) {
-      currentOffset = offset;
-      const videoPath = isLDM ? baseLDM + videoFile : baseCDN + videoFile;
-      video.src = videoPath;
-      video.currentTime = 0;
+    function playMusic(file) {
+      currentTrack = file;
+      player.src = file;
+      player.play();
       video.pause();
-      currentVideo = videoFile;
-
-      audio.src = `music/${audioFile}`;
-      audio.play();
+      video.style.display = 'none';
+      videoShown = false;
+      clarification.style.display = 'none';
     }
 
-    function toggleLDM() {
-      isLDM = !isLDM;
-      if (currentVideo) {
-        const videoPath = isLDM ? baseLDM + currentVideo : baseCDN + currentVideo;
-        video.src = videoPath;
-        video.currentTime = audio.currentTime - currentOffset;
-        video.play();
-      }
-    }
+    player.addEventListener('timeupdate', () => {
+      const settings = videoSettings[currentTrack];
+      if (!settings) return;
 
-    audio.addEventListener("play", () => {
-      sync();
-      video.play();
-    });
+      const currentTime = player.currentTime;
+      if (!videoShown && currentTime >= settings.trigger) {
+        const folder = ldmToggle.checked ? 'background/' : settings.folder;
+        const src = `${folder}${settings.base}`;
 
-    audio.addEventListener("pause", () => {
-      video.pause();
-    });
-
-    audio.addEventListener("seeking", () => {
-      video.currentTime = Math.max(0, audio.currentTime - currentOffset);
-    });
-
-    function sync() {
-      function step() {
-        if (!audio.paused) {
-          const target = audio.currentTime - currentOffset;
-          const diff = target - video.currentTime;
-          if (Math.abs(diff) > 0.3) {
-            video.currentTime = Math.max(0, target);
-          }
-          requestAnimationFrame(step);
+        if (video.src !== src) {
+          video.src = src;
         }
-      }
-      requestAnimationFrame(step);
-    }
 
-    audio.addEventListener("ended", () => {
+        video.currentTime = currentTime - settings.trigger;
+        video.style.display = 'block';
+        video.play();
+        videoShown = true;
+        clarification.style.display = 'block';
+      }
+
+      if (videoShown) {
+        video.currentTime = currentTime - settings.trigger;
+      }
+    });
+
+    player.addEventListener('pause', () => {
+      if (videoShown) video.pause();
+    });
+
+    player.addEventListener('play', () => {
+      if (videoShown) video.play();
+    });
+
+    player.addEventListener('seeked', () => {
+      const settings = videoSettings[currentTrack];
+      if (!settings || !videoShown) return;
+      const offset = player.currentTime - settings.trigger;
+      video.currentTime = offset >= 0 ? offset : 0;
+    });
+
+    player.addEventListener('ended', () => {
       video.pause();
-      document.body.style.backgroundColor = "white";
+      video.style.display = 'none';
+      videoShown = false;
+      clarification.style.display = 'none';
     });
   </script>
-
 </body>
 </html>
